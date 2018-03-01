@@ -34,7 +34,7 @@ def select(sql, args, size=None):
         else:
             rs = cur.fetchall()
         yield from cur.close()
-        logging.info('Rows returned: {0}'.format(len(rs)))
+        #logging.info('Rows returned: {0}'.format(len(rs)))
         return rs
 
 @asyncio.coroutine

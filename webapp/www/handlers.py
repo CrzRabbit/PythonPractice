@@ -1,5 +1,5 @@
-from webapp.www.web import *
-from webapp.www.tables import *
+from webapp.www.web import get
+from webapp.www.tables import User
 
 @get('/')
 def index(request):

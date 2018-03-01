@@ -71,7 +71,7 @@ def response_factory(app, handler):
                 resp.content_type = 'application/json;charset=utf-8'
                 return resp
             else:
-                resp = web.Response(body=app['__templating__'].get_template(template).vendor(**r).encode('utf-8'))
+                resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))
                 resp.content_type = 'text/html;charset=utf-8'
                 return resp
         if isinstance(r, int) and r > 100 and r < 600:
@@ -108,7 +108,7 @@ def init(loop):
     init_jinja2(app, filters=dict(datetime=datatime_filter))
     add_routes(app, 'handlers')
     add_static(app)
-    srv = loop.create_server(app.make_handler(), '127.0.0.1', 9000)
+    srv = yield from loop.create_server(app.make_handler(), '127.0.0.1', 9000)
     logging.info('Server is running at {0}:{1}'.format('127.0.0.1', 9000))
     return srv
 
