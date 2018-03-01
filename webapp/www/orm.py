@@ -2,6 +2,9 @@ import asyncio
 import aiomysql
 import logging; logging.basicConfig(level=logging.INFO)
 
+def log(sql, args=()):
+    logging.info('SQL: {0}{1}'.format(sql, ' % {0}'.format(tuple(args)) if args else ''))
+
 @asyncio.coroutine
 def create_pool(loop, **kw):
     logging.info('create database connection pool...')
@@ -21,7 +24,7 @@ def create_pool(loop, **kw):
 
 @asyncio.coroutine
 def select(sql, args, size=None):
-    #logging(create_tables, args)
+    log(sql.replace('?', '%s'), args)
     global __pool
     with (yield from __pool) as conn:
         cur = yield from conn.cursor(aiomysql.DictCursor)
@@ -35,16 +38,20 @@ def select(sql, args, size=None):
         return rs
 
 @asyncio.coroutine
-def execute(sql, args):
-    print(sql.replace('?', '%s'))
-    print(args)
+def execute(sql, args, autocommit=True):
+    log(sql.replace('?', '%s'), args)
     with (yield from __pool) as conn:
+        if not autocommit:
+            yield from conn.begin()
         try:
             cur = yield from conn.cursor()
             yield from cur.execute(sql.replace('?', '%s'), args or ())
             affected = cur.rowcount
-            yield from cur.close()
+            if not autocommit:
+                yield from conn.commit()
         except BaseException as e:
+            if not autocommit:
+                yield from conn.rollback()
             raise
         return affected
 
@@ -80,7 +87,7 @@ class ModelMetaClass(type):
         attrs['__table__'] = tableName          #表名
         attrs['__primary_key__'] = primary_key  #主键
         attrs['__fields__'] = fields            #其他属性
-        #构造默认的select, insert, update, delete语句
+        #构造默认的select, insert, update, delete, delete all语句
         attrs['__select__'] = 'SELECT {0}, {1} FROM {2} '.format(primary_key, ', '.join(escaped_fields), tableName)
         attrs['__insert__'] = 'INSERT INTO {0} ({1}, {2}) VALUES ({3})'.format(tableName, ', '.join(escaped_fields), primary_key, create_args_string(len(escaped_fields) + 1))
         attrs['__update__'] = 'UPDATE {0} set {1} WHERE {2}=?'.format(tableName, ', '.join(map(lambda f: '{0}=?'.format(mappings.get(f).name or f), fields)), primary_key)
@@ -129,6 +136,40 @@ class Model(dict, metaclass=ModelMetaClass):
             return None
         return cls(**rs[0])
 
+    @classmethod
+    @asyncio.coroutine
+    def findAll(cls, where=None, args=None, **kw):
+        sql = [cls.__select__]
+        if where:
+            sql.append('where')
+            sql.append(where)
+        if args is None:
+            args = dict()
+        orderby = kw.get('orderby', None)
+        if orderby:
+            sql.append('orderby')
+            sql.append(orderby)
+        limit = kw.get('limit', None)
+        if limit is not None:
+            sql.append('limit')
+            if isinstance(limit, int):
+                sql.append('?')
+                args.append(limit)
+            elif isinstance(limit, dict) and len(limit) == 2:
+                sql.append('?, ?')
+                args.extend(limit)
+            else:
+                raise ValueError('Invalit limit value: {0}'.format(limit))
+        rs = yield from select(' '.join(sql), args)
+        return [cls(**r) for r in rs]
+
+    @classmethod
+    @asyncio.coroutine
+    def clear(cls):
+        args = list()
+        rows = yield from execute(cls.__delete_all__, args)
+        logging.warning('Clear completed, {0} rows affected'.format(rows))
+
     @asyncio.coroutine
     def save(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
@@ -139,23 +180,20 @@ class Model(dict, metaclass=ModelMetaClass):
 
     @asyncio.coroutine
     def update(self):
-        pass
-        # args = list()
-        # for i in range(len(self.__fields__) + 1):
-        #     args.append(' ')
-        # rows = yield from execute(self.__update__, args)
-        # if rows == 0:
-        #     logging.warning('Updata value failed, no rows affected.')
+        args = list(map(self.getValue, self.__fields__))
+        args.append(self.getValue(self.__primary_key__))
+        rows = yield from execute(self.__update__, args)
+        if rows == 0:
+            logging.warning('Updata value failed, no rows affected.')
 
     @asyncio.coroutine
-    def delete(self):
-        pass
-
-    @asyncio.coroutine
-    def clear(self):
+    def remove(self):
         args = list()
-        rows = yield from execute(self.__delete_all__, args)
-        logging.warning('Clear completed, {0} rows affected'.format(rows))
+        args.append(self.getValue(self.__primary_key__))
+        rows = yield from execute(self.__delete__, args)
+        if rows != 1:
+            logging.warning('Remove failed, {0} rows affected.'.format(rows))
+
 
 class Field(object):
 
@@ -185,7 +223,7 @@ class BooleanField(Field):
 
 class FloatField(Field):
 
-    def __init__(self, name = None, primary_key = False, default = None, ddl = 'real'):
+    def __init__(self, name = None, primary_key = False, default = 0., ddl = 'real'):
         super().__init__(name, ddl, primary_key, default)
 
 class TextField(Field):

@@ -6,6 +6,7 @@ def test(loop):
     u = User(name='test3',email='test4@test.com',passwd='test',image='about:blank')
     yield from u.save()
     yield from u.update()
+    yield from u.remove()
     yield from u.clear()
 
 loop = asyncio.get_event_loop()
