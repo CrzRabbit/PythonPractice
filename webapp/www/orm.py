@@ -21,7 +21,7 @@ def create_pool(loop, **kw):
 
 @asyncio.coroutine
 def select(sql, args, size=None):
-    #logging(sql, args)
+    #logging(create_tables, args)
     global __pool
     with (yield from __pool) as conn:
         cur = yield from conn.cursor(aiomysql.DictCursor)
@@ -36,11 +36,13 @@ def select(sql, args, size=None):
 
 @asyncio.coroutine
 def execute(sql, args):
+    print(sql.replace('?', '%s'))
+    print(args)
     with (yield from __pool) as conn:
         try:
             cur = yield from conn.cursor()
             yield from cur.execute(sql.replace('?', '%s'), args or ())
-            affected = cur.rowcount()
+            affected = cur.rowcount
             yield from cur.close()
         except BaseException as e:
             raise
@@ -79,16 +81,17 @@ class ModelMetaClass(type):
         attrs['__primary_key__'] = primary_key  #主键
         attrs['__fields__'] = fields            #其他属性
         #构造默认的select, insert, update, delete语句
-        attrs['__select__'] = 'SELECT `%s`, %s FROM `%s` '.format(primary_key, ', '.join(escaped_fields), tableName)
-        attrs['__insert__'] = 'INSERT INTO `%s` (%s, `%s`) VALUES (%s)'.format(tableName, ', '.join(escaped_fields), primary_key, create_args_string(len(escaped_fields) + 1))
-        attrs['__update__'] = 'UPDATE `%s` set %s WHERE `%s`=?'.format(tableName, ', '.join(map(lambda f: '`%s`=?'.format(mappings.get(f).name or f), fields)), primary_key)
-        attrs['__delete__'] = 'DELETE FROM `%s` WHERE `%s`=?'.format(tableName, primary_key)
+        attrs['__select__'] = 'SELECT {0}, {1} FROM {2} '.format(primary_key, ', '.join(escaped_fields), tableName)
+        attrs['__insert__'] = 'INSERT INTO {0} ({1}, {2}) VALUES ({3})'.format(tableName, ', '.join(escaped_fields), primary_key, create_args_string(len(escaped_fields) + 1))
+        attrs['__update__'] = 'UPDATE {0} set {1} WHERE {2}=?'.format(tableName, ', '.join(map(lambda f: '{0}=?'.format(mappings.get(f).name or f), fields)), primary_key)
+        attrs['__delete__'] = 'DELETE FROM {0} WHERE {1}=?'.format(tableName, primary_key)
+        attrs['__delete_all__'] = 'DELETE FROM {0}'.format(tableName)
         return type.__new__(cls, name, bases, attrs)
 
 def create_args_string(len):
     args = list()
     for i in range(len):
-        args.append('?')
+        args.append("?")
     return ', '.join(args)
 
 class Model(dict, metaclass=ModelMetaClass):
@@ -129,10 +132,30 @@ class Model(dict, metaclass=ModelMetaClass):
     @asyncio.coroutine
     def save(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
-        args.append('{0}'.format(self.__primary_key__))
+        args.append('{0}'.format(self.getValueOrDefault(self.__primary_key__)))
         rows = yield from execute(self.__insert__, args)
         if rows != 1:
             logging.warning('Insert value failed, affected rows: {0}'.format(rows))
+
+    @asyncio.coroutine
+    def update(self):
+        pass
+        # args = list()
+        # for i in range(len(self.__fields__) + 1):
+        #     args.append(' ')
+        # rows = yield from execute(self.__update__, args)
+        # if rows == 0:
+        #     logging.warning('Updata value failed, no rows affected.')
+
+    @asyncio.coroutine
+    def delete(self):
+        pass
+
+    @asyncio.coroutine
+    def clear(self):
+        args = list()
+        rows = yield from execute(self.__delete_all__, args)
+        logging.warning('Clear completed, {0} rows affected'.format(rows))
 
 class Field(object):
 
@@ -162,7 +185,7 @@ class BooleanField(Field):
 
 class FloatField(Field):
 
-    def __init__(self, name = None, primary_key = False, default = None, ddl = 'float'):
+    def __init__(self, name = None, primary_key = False, default = None, ddl = 'real'):
         super().__init__(name, ddl, primary_key, default)
 
 class TextField(Field):
