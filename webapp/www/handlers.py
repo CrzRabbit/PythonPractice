@@ -4,7 +4,11 @@ from webapp.www.tables import User
 @get('/')
 def index(request):
     users = yield from User.findAll()
-    return {
+    if users is not None:
+        return {
         '__template__': 'test.html',
         'users': users
+        }
+    return {
+        '__template__': 'test1.html'
     }
