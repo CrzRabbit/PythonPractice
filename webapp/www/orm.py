@@ -161,7 +161,7 @@ class Model(dict, metaclass=ModelMetaClass):
             else:
                 raise ValueError('Invalit limit value: {0}'.format(limit))
         rs = yield from select(' '.join(sql), args)
-        return [cls(**r) for r in rs]
+        return [cls(**r) for r in rs.__dict__['_result']]
 
     @classmethod
     @asyncio.coroutine
