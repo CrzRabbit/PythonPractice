@@ -1,4 +1,4 @@
-from webapp.conf import config_default
+from PythonPractice.webapp.conf import config_default
 
 configs = config_default.configs
 

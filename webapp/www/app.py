@@ -3,8 +3,8 @@ import asyncio, os, time, json
 from datetime import datetime
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
-from webapp.www.orm import *
-from webapp.www.web import *
+from PythonPractice.webapp.www.orm import *
+from PythonPractice.webapp.www.web import *
 
 def init_jinja2(app, **kw):
     logging.info('Init jinja2...')
