@@ -14,6 +14,20 @@ import logging
 def next_id():
     return '{0:0>15}{1}000'.format(int(time.time() * 1000), uuid.uuid4().hex)
 
+def check_admin(request):
+    if request.__user__ is None or not request.__user__.admin:
+        raise APIPermissionError
+
+def get_page_index(page_str):
+    p = 1
+    try:
+        p = int(page_str)
+    except ValueError as e:
+        pass
+    if p < 1:
+        p = 1
+    return p
+
 COOKIE_NAME = 'awesession'
 _COOKIE_KEY = configs['session']['secret']
 
@@ -61,18 +75,11 @@ def index(request):
         'blogs':blogs
     }
 
+#register
 @get('/register')
-def register():
-    print('register')
+def register(request):
     return {
         '__template__': 'register.html'
-    }
-
-@get('/signin')
-def signin():
-    print('signin')
-    return {
-        '__template__': 'signin.html'
     }
 
 _RE_MAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1, 4}$')
@@ -125,3 +132,65 @@ def api_register_user(*, email, name, passwd):
     r.content_type = 'application/json'
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
+
+#singin
+@get('/signin')
+def signin(request):
+    return {
+        '__template__': 'signin.html'
+    }
+
+@post('/api/authenticate')
+def atuthenticate(*, email, passwd):
+    if not email:
+        raise APIValueError('email', 'Invalid email')
+    if not passwd:
+        raise APIValueError('passwd', 'Invalid password')
+    users = yield from User.findAll('email=?', [email])
+    if len(users) == 0:
+        raise APIValueError('email', 'Email not exist.')
+    user = users[0]
+    #check password
+    sha1 = hashlib.sha1()
+    sha1.update(user.email.encode('utf-8'))
+    sha1.update(b':')
+    sha1.update(user.passwd.encode('utf-8'))
+    if passwd != sha1.hexdigest():
+        raise APIValueError('passwd', 'Wrong password')
+    #authenticate ok
+    r = web.Response()
+    r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
+    user.passwd = '******'
+    r.content_type = 'application/json'
+    r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
+    return r
+
+@get('/signout')
+def signout(request):
+    referer = request.headers.get('Referer')
+    r = web.HTTPFound(referer or '/')
+    r.set_cookie(COOKIE_NAME, '-deleted-', max_age=0, httponly=True)
+    logging.info('user signed out.')
+    return r
+
+@get('/manage/blogs/create')
+def manage_create_blog():
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': '',
+        'action': '/api/blogs'
+    }
+
+@post('/api/blogs')
+def api_create_blog(request, *, name, summary, content):
+    check_admin(request)
+    if not name or not name.strip():
+        raise APIValueError('name', 'name cannot be empty.')
+    if not summary or not summary.strip():
+        raise APIValueError('summary', 'summary cannot be empty.')
+    if not content or not content.strip():
+        raise APIValueError('content', 'content connot be empty.')
+    blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image,
+                name=name.strip(), summary=summary.strip(), content=content.strip())
+    yield from blog.save()
+    return blog

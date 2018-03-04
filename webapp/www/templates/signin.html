@@ -5,7 +5,7 @@
     <title>登录 - Awesome Python Webapp</title>
     <link rel="stylesheet" href="../static/css/uikit.min.css">
     <link rel="stylesheet" href="../static/css/uikit.gradient.min.css">
-    <script src="../static/js/jquery.min.js"></script>
+    <script src="../static/js/jquery-3.2.1.min.js"></script>
     <script src="../static/js/sha1.min.js"></script>
     <script src="../static/js/uikit.min.js"></script>
     <script src="../static/js/vue.min.js"></script>
@@ -19,8 +19,8 @@
                     passwd: ''
                 },
                 methods:{
-                    submit: function (event) {
-                        event.preventDefault()
+                    submit: function(event) {
+                        event.preventDefault();
                         var
                             $form = $('#vm'),
                             email = this.email.trim().toLowerCase(),
@@ -28,11 +28,15 @@
                                 email: email,
                                 passwd: this.passwd==='' ? '': CryptoJS.SHA1(email + ':' + this.passwd).toString()
                             };
-                        $form.postJSON('/api/authenticate', data, function (err, result) {
-                            if(!err) {
-                                location.assign('/');
-                            }
-                        });
+                        $.post('/api/authenticate',{
+                            "email": this.email.trim().toLowerCase(),
+                            "passwd": this.passwd==='' ? '': CryptoJS.SHA1(email + ':' + this.passwd).toString()
+                            }, function(err, result) {
+                            // if (! err) {
+                            //     location.assign('/');
+                            // }
+                            location.assign('/');
+                            }, "json");
                     }
                 }
             });

@@ -23,33 +23,32 @@
                     event.preventDefault();
                     var $from = $('#vm');
                     if (! this.name.trim()) {
-                        return $from.shwoFromError('请输入名字');
+                        //return $form.showFromError('请输入名字');
                     }
                     if (! validataEmail(this.email.trim().toLowerCase())) {
-                        return $from.showFormError('请输入正确的Email地址');
+                        //return $form.showFormError('请输入正确的Email地址');
                     }
                     if (this.password1.length < 6) {
-                        return $from.showFormError('口令长度至少为6个字符');
+                        //return $form.showFormError('口令长度至少为6个字符');
                     }
                     if (this.password1 != this.password2) {
-                        return $from.shwoFromError('两次输入的口令不一致');
+                        //return $.showFromError('两次输入的口令不一致');
                     }
                     var email = this.email.trim().toLowerCase();
-                    $from.postJSON('/api/users'), {
-                        name: this.name.trim(),
-                        email: email,
-                        passwd: CryptoJS.SHA1(email + ':' + this.password1.toString())
+                    $.post('/api/users', {
+                        "name": this.name.trim(),
+                        "email": email,
+                        "passwd": CryptoJS.SHA1(email + ':' + this.passwd1).toString()
                     }, function (err, r) {
-                        if (err) {
-                            return $form.shwoFormError(err);
-                        }
-                        return location.assign('/')
-                    }
+                        // if (err) {
+                        //     return $.showFormError(err);
+                        // }
+                        return location.assign('/');
+                    });
                 }
             }
         });
         $('#vm').show();
-
     });
 </script>
 
@@ -84,6 +83,9 @@
                 <div class="uk-form-controls">
                     <input v-model="password2" type="password" maxlength="50" placeholder="重复口令" class="'uk-width-1-1">
                 </div>
+            </div>
+            <div class="uk-form-row">
+                <button type="submit" class="uk-button uk-button-primary"><i class="uk-icon-user"></i>注册</button>
             </div>
         </form>
     </div>

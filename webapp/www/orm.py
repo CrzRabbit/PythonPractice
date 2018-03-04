@@ -131,10 +131,10 @@ class Model(dict, metaclass=ModelMetaClass):
     @classmethod
     @asyncio.coroutine
     def find(cls, pk):
-        rs = yield from select('%s where `%s`=?'.format(cls.__select__, cls.__primary_key__), [pk], 1)
-        if len(rs) == 0:
+        rs = yield from select('{0} where {1}=?'.format(cls.__select__, cls.__primary_key__), [pk], 1)
+        if len(rs.__dict__['_result']) == 0:
             return None
-        return cls(**rs[0])
+        return cls(**rs.__dict__['_result'][0])
 
     @classmethod
     @asyncio.coroutine
