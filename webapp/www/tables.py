@@ -1,4 +1,5 @@
-from PythonPractice.webapp.www.orm import *
+# from PythonPractice.webapp.www.orm import *
+from webapp.www.orm import *
 import time, uuid
 
 def next_id():

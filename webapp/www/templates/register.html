@@ -38,11 +38,12 @@
                     $.post('/api/users', {
                         "name": this.name.trim(),
                         "email": email,
-                        "passwd": CryptoJS.SHA1(email + ':' + this.passwd1).toString()
+                        "passwd": CryptoJS.SHA1(email + ':' + this.password1)
                     }, function (err, r) {
                         // if (err) {
                         //     return $.showFormError(err);
                         // }
+                        //window.alert(CryptoJS.SHA1(email + ':' + passwd));
                         return location.assign('/');
                     });
                 }

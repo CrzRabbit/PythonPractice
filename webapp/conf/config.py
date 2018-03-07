@@ -1,4 +1,5 @@
-from PythonPractice.webapp.conf import config_default
+# from PythonPractice.webapp.conf import config_default
+from webapp.conf import config_default
 
 configs = config_default.configs
 
@@ -11,6 +12,5 @@ def merge(default, override):
 try:
     from webapp.conf import config_override
     configs = merge(configs, config_override.configs)
-    print(configs)
 except ImportError:
     pass

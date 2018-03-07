@@ -26,16 +26,15 @@
                             email = this.email.trim().toLowerCase(),
                             data = {
                                 email: email,
-                                passwd: this.passwd==='' ? '': CryptoJS.SHA1(email + ':' + this.passwd).toString()
+                                passwd: this.passwd
                             };
                         $.post('/api/authenticate',{
                             "email": this.email.trim().toLowerCase(),
-                            "passwd": this.passwd==='' ? '': CryptoJS.SHA1(email + ':' + this.passwd).toString()
+                            "passwd": CryptoJS.SHA1(this.email + ':' + this.passwd).toString()
                             }, function(err, result) {
-                            // if (! err) {
-                            //     location.assign('/');
-                            // }
-                            location.assign('/');
+                            if (result.toString() == "success") {
+                                location.assign('/');
+                            }
                             }, "json");
                     }
                 }

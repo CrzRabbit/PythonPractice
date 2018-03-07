@@ -1,5 +1,6 @@
 import functools, inspect, asyncio, logging, os
-from PythonPractice.webapp.www.apierror import *
+# from PythonPractice.webapp.www.apierror import *
+from webapp.www.apierror import *
 from aiohttp import web
 from urllib import parse
 
@@ -101,7 +102,6 @@ class RequestHandler(object):
                         kw[k] = v[0]
 
         if kw is None:
-            print(dict(**request.match_info))
             return dict(**request.match_info)
         else:
             if not self._has_named_kw_arg and self._named_kw_args:

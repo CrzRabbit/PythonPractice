@@ -3,9 +3,12 @@ import asyncio, os, time, json
 from datetime import datetime
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
-from PythonPractice.webapp.www.handlers import COOKIE_NAME, cookie2user
-from PythonPractice.webapp.www.orm import *
-from PythonPractice.webapp.www.web import *
+# from PythonPractice.webapp.www.handlers import COOKIE_NAME, cookie2user
+# from PythonPractice.webapp.www.orm import *
+# from PythonPractice.webapp.www.web import *
+from webapp.www.handlers import COOKIE_NAME, cookie2user
+from webapp.www.orm import *
+from webapp.www.web import *
 
 def init_jinja2(app, **kw):
     logging.info('Init jinja2...')
@@ -49,6 +52,7 @@ def auth_factory(app, handler):
                 request.__user__ = user
         if request.path.startswith('/manage/') and (request.__user__ is None or not request.__user__.admin):
             return web.HTTPFound('/singin')
+        return (yield from handler(request))
     return auth
 
 @asyncio.coroutine
@@ -121,7 +125,7 @@ def init(loop):
     yield from create_pool(loop=loop, host='127.0.0.1', user='root', password='root', database='awesome')
     app = web.Application(loop=loop, middlewares=[
         logger_factory,
-        #auth_factory,
+        auth_factory,
         response_factory
     ])
     init_jinja2(app, filters=dict(datetime=datatime_filter))

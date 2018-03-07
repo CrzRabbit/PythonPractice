@@ -1,7 +1,11 @@
-from PythonPractice.webapp.www.web import get, post
-from PythonPractice.webapp.www.tables import User, Blog
-from PythonPractice.webapp.www.apierror import *
-from PythonPractice.webapp.conf.config import *
+# from PythonPractice.webapp.www.web import get, post
+# from PythonPractice.webapp.www.tables import User, Blog
+# from PythonPractice.webapp.www.apierror import *
+# from PythonPractice.webapp.conf.config import *
+from webapp.www.web import get, post
+from webapp.www.tables import User, Blog
+from webapp.www.apierror import *
+from webapp.conf.config import *
 from aiohttp import web
 import time
 import re
@@ -70,9 +74,11 @@ def index(request):
         Blog(id='2', name='Something New', summary=summary, created_at=time.time() - 3600),
         Blog(id='1', name='Learn Swift', summary=summary, created_at=time.time() - 7200)
     ]
+    user = request.__user__
     return {
         '__template__': 'blogs.html',
-        'blogs':blogs
+        'blogs': blogs,
+        'user': user
     }
 
 #register
@@ -82,7 +88,7 @@ def register(request):
         '__template__': 'register.html'
     }
 
-_RE_MAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1, 4}$')
+_RE_MAIL = re.compile(r'^[\.a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$')
 _RE_SHA1 = re.compile(r'^[0-9a-f]{40}$')
 
 @post('/register')
@@ -121,8 +127,9 @@ def api_register_user(*, email, name, passwd):
     if len(users) > 0:
         raise APIError('register:failed', 'email', 'Email is already in use.')
     uid = next_id()
-    sha1_passwd = '{0}:{1}'.format(uid, passwd)
-    user = User(id=uid, name=name.strip(), email=email, passwd=hashlib.sha1(sha1_passwd.encode('utf-8')).hexdigest(),
+    sha1_passwd = '{0}:{1}'.format(email, passwd)
+    print(passwd)
+    user = User(id=uid, name=name.strip(), email=email, passwd=passwd,
                 image='http://www.gravatar.com/avatar/{0}?d=mm&s=120'.format(hashlib.md5(email.encode('utf-8')).hexdigest()))
     yield from user.save()
     #make session cookie
@@ -155,7 +162,9 @@ def atuthenticate(*, email, passwd):
     sha1.update(user.email.encode('utf-8'))
     sha1.update(b':')
     sha1.update(user.passwd.encode('utf-8'))
-    if passwd != sha1.hexdigest():
+    print(passwd)
+    print(user.passwd)
+    if passwd != user.passwd:
         raise APIValueError('passwd', 'Wrong password')
     #authenticate ok
     r = web.Response()
