@@ -57,15 +57,15 @@ def auth_factory(app, handler):
 
 @asyncio.coroutine
 def data_factory(app, handler):
-    def parse_data(requst):
-        if requst.method == 'POST':
-            if requst.content_type.startswith('application/json'):
-                requst.__data__ = yield from requst.json()
-                logging.info('data from json: {0}.'.format(requst.__data__))
-            if requst.content_type.startswith('application/x-www-form-urlencoded'):
-                requst.__data__ = yield from requst.post()
-                logging.info('data form form: {0}.'.format(requst.__data__))
-        return (yield from handler(requst))
+    def parse_data(request):
+        if request.method == 'POST':
+            if request.content_type.startswith('application/json'):
+                request.__data__ = yield from request.json()
+                logging.info('data from json: {0}.'.format(request.__data__))
+            if request.content_type.startswith('application/x-www-form-urlencoded'):
+                request.__data__ = yield from request.post()
+                logging.info('data form form: {0}.'.format(request.__data__))
+        return (yield from handler(request))
     return parse_data
 
 @asyncio.coroutine

@@ -2,7 +2,7 @@
 
 {% block title %}编辑日志{% endblock %}
 
-{% block beforeend %}
+{% block beforehead %}
 
 <script>
     var
@@ -10,7 +10,7 @@
         action = '{{ action }}';
     function initVM(blog){
         var vm = new Vue({
-           el: '#vm',
+            el: '#vm',
             data: blog,
             methods: {
                submit: function (event) {
@@ -27,7 +27,7 @@
                }
             }
         });
-        $('vm'.show())
+        $('#vm').show();
     }
     $(function () {
         if (ID) {

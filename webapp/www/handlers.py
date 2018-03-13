@@ -182,8 +182,8 @@ def signout(request):
     logging.info('user signed out.')
     return r
 
-@get('/manage/blogs/create')
-def manage_create_blog():
+@get('/manage/create')
+def manage_create_blog(request):
     return {
         '__template__': 'manage_blog_edit.html',
         'id': '',
