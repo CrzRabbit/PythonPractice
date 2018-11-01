@@ -5,11 +5,11 @@ import logging; logging.basicConfig(level=logging.INFO)
 def log(sql, args=()):
     logging.info('SQL: {0}{1}'.format(sql, ' % {0}'.format(tuple(args)) if args else ''))
 
-@asyncio.coroutine
+async
 def create_pool(loop, **kw):
     logging.info('create database connection pool...')
     global __pool
-    __pool = yield from aiomysql.create_pool(
+    __pool = await aiomysql.create_pool(
         host=kw.get('host', 'localhost'),
         port=kw.get('port', 3306),
         user=kw['user'],
@@ -22,36 +22,36 @@ def create_pool(loop, **kw):
         loop=loop
     )
 
-@asyncio.coroutine
+async
 def select(sql, args, size=None):
     log(sql.replace('?', '%s'), args)
     global __pool
-    with (yield from __pool) as conn:
-        cur = yield from conn.cursor(aiomysql.DictCursor)
-        yield from cur.execute(sql.replace('?', '%s'), args or ())
+    with (await __pool) as conn:
+        cur = await conn.cursor(aiomysql.DictCursor)
+        await cur.execute(sql.replace('?', '%s'), args or ())
         if size:
             rs = cur.fetchmany(size)
         else:
             rs = cur.fetchall()
-        yield from cur.close()
+        await cur.close()
         #logging.info('Rows returned: {0}'.format(len(rs)))
         return rs
 
-@asyncio.coroutine
+async
 def execute(sql, args, autocommit=True):
     log(sql.replace('?', '%s'), args)
-    with (yield from __pool) as conn:
+    with (await __pool) as conn:
         if not autocommit:
-            yield from conn.begin()
+            await conn.begin()
         try:
-            cur = yield from conn.cursor()
-            yield from cur.execute(sql.replace('?', '%s'), args or ())
+            cur = await conn.cursor()
+            await cur.execute(sql.replace('?', '%s'), args or ())
             affected = cur.rowcount
             if not autocommit:
-                yield from conn.commit()
+                await conn.commit()
         except BaseException as e:
             if not autocommit:
-                yield from conn.rollback()
+                await conn.rollback()
             raise
         return affected
 
@@ -129,15 +129,15 @@ class Model(dict, metaclass=ModelMetaClass):
         return value
 
     @classmethod
-    @asyncio.coroutine
+    async
     def find(cls, pk):
-        rs = yield from select('{0} where {1}=?'.format(cls.__select__, cls.__primary_key__), [pk], 1)
+        rs = await select('{0} where {1}=?'.format(cls.__select__, cls.__primary_key__), [pk], 1)
         if len(rs.__dict__['_result']) == 0:
             return None
         return cls(**rs.__dict__['_result'][0])
 
     @classmethod
-    @asyncio.coroutine
+    async
     def findAll(cls, where=None, args=None, **kw):
         sql = [cls.__select__]
         if where:
@@ -160,37 +160,37 @@ class Model(dict, metaclass=ModelMetaClass):
                 args.extend(limit)
             else:
                 raise ValueError('Invalit limit value: {0}'.format(limit))
-        rs = yield from select(' '.join(sql), args)
+        rs = await select(' '.join(sql), args)
         return [cls(**r) for r in rs.__dict__['_result']]
 
     @classmethod
-    @asyncio.coroutine
+    async
     def clear(cls):
         args = list()
-        rows = yield from execute(cls.__delete_all__, args)
+        rows = await execute(cls.__delete_all__, args)
         logging.warning('Clear completed, {0} rows affected'.format(rows))
 
-    @asyncio.coroutine
+    async
     def save(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append('{0}'.format(self.getValueOrDefault(self.__primary_key__)))
-        rows = yield from execute(self.__insert__, args)
+        rows = await execute(self.__insert__, args)
         if rows != 1:
             logging.warning('Insert value failed, affected rows: {0}'.format(rows))
 
-    @asyncio.coroutine
+    async
     def update(self):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
-        rows = yield from execute(self.__update__, args)
+        rows = await execute(self.__update__, args)
         if rows == 0:
             logging.warning('Updata value failed, no rows affected.')
 
-    @asyncio.coroutine
+    async
     def remove(self):
         args = list()
         args.append(self.getValue(self.__primary_key__))
-        rows = yield from execute(self.__delete__, args)
+        rows = await execute(self.__delete__, args)
         if rows != 1:
             logging.warning('Remove failed, {0} rows affected.'.format(rows))
 

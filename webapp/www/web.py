@@ -76,7 +76,7 @@ class RequestHandler(object):
         self._required_kw_args = get_required_kw_args(fn)
         self._named_kw_args = get_named_kw_args(fn)
 
-    @asyncio.coroutine
+    async
     def __call__(self, request):
         kw = None
         if self._has_named_kw_arg or self._has_var_kw_arg or self._has_request_arg:
@@ -85,12 +85,12 @@ class RequestHandler(object):
                     return web.HTTPBadRequest('Missing Content-Type.')
                 ct = request.content_type.lower()
                 if ct.startswith('application/json'):
-                    params = yield from request.json()
+                    params = await request.json()
                     if not isinstance(params, dict):
                         return web.HTTPBadRequest('JSON body must be object.')
                     kw = params
                 elif ct.startswith('application/x-www-form-urlencoded') or ct.startwith('multipart/form-data'):
-                    params = yield from request.post()
+                    params = await request.post()
                     kw = dict(params)
                 else:
                     return web.HTTPBadRequest('Unsupported Content-Type: {0}'.format(request.content_type))
@@ -125,7 +125,7 @@ class RequestHandler(object):
                         return web.HTTPBadRequest('Missing argument: {0}'.format(name))
             logging.info('Call with args: {0}'.format(str(kw)))
             try:
-                r = yield from self._func(**kw)
+                r = await self._func(**kw)
                 return r
             except APIError as e:
                 return dict(error=e.error, data=e.data, message=e.message)
